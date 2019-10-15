@@ -1,17 +1,11 @@
 package com.lightstreamsoftware.kda.demo;
 
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
-import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kinesis.FlinkKinesisConsumer;
 import org.apache.flink.streaming.connectors.kinesis.FlinkKinesisProducer;
-import org.apache.flink.streaming.connectors.kinesis.config.ConsumerConfigConstants;
-
-import java.util.Properties;
 
 public class StreamingJob {
 
@@ -19,16 +13,13 @@ public class StreamingJob {
         final ObjectMapper objectMapper = new ObjectMapper();
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
+        FlinkKinesisConsumer<String> sourceFunction = KinesisConfig.getFlinkSource("input-stream");
+        FlinkKinesisProducer<String> sinkFunction = KinesisConfig.getFlinkSink("output-stream");
+
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
         env.getConfig().setAutoWatermarkInterval(100);
 
-        Properties inputProperties = new Properties();
-        inputProperties.setProperty(ConsumerConfigConstants.AWS_REGION, "us-east-1");
-        inputProperties.setProperty(ConsumerConfigConstants.STREAM_INITIAL_POSITION, "TRIM_HORIZON");
-        inputProperties.setProperty(ConsumerConfigConstants.SHARD_GETRECORDS_INTERVAL_MILLIS, "500");
-        inputProperties.setProperty(ConsumerConfigConstants.SHARD_GETRECORDS_MAX, "1000");
-
-        DataStream<String> stream = env.addSource(new FlinkKinesisConsumer<>("input-stream", new SimpleStringSchema(), inputProperties))
+        DataStream<String> stream = env.addSource(sourceFunction)
                 .name("Input Source")
                 .uid("5f20ef89-e50c-41d8-a75d-909e2b3b98e3")
                 .setParallelism(1)
@@ -42,16 +33,16 @@ public class StreamingJob {
                 .assignTimestampsAndWatermarks(new TimestampAndWatermarker());
 
         DataStream<TurbineMetricsSummary> fullAggregations = tickerData
-                .windowAll(TumblingEventTimeWindows.of(Time.minutes(1)))
-                .aggregate(new TurbineSummaryAggregator("Totals"))
+                .windowAll(new TurbineMetricWindowAssigner())
+                .aggregate(new TurbineSummaryAggregator(), new TurbineMetricsAllWindowsFunction())
                 .name("Aggregate Full Data By 1 Minute")
                 .uid("7d528fd2-0d7a-4703-9d80-9bbb419fb78e")
                 .setParallelism(1)
                 .setMaxParallelism(1);
 
         DataStream<TurbineMetricsSummary> aggregatedTickerData = tickerData.keyBy(TurbineMetrics::getTurbineId)
-                .window(TumblingEventTimeWindows.of(Time.minutes(1)))
-                .aggregate(new TurbineSummaryAggregator("Per Turbine"))
+                .window(new TurbineMetricWindowAssigner())
+                .aggregate(new TurbineSummaryAggregator(), new TurbineMetricsWindowFunction())
                 .name("Aggregate By 1 Minute")
                 .uid("5fafb567-53ed-4230-8f70-34d22424a4d3")
                 .setParallelism(1)
@@ -68,14 +59,6 @@ public class StreamingJob {
                 .uid("ed393f55-7b05-45ab-b492-296fecee202c")
                 .setParallelism(1)
                 .setMaxParallelism(1);
-
-        Properties outputProperties = new Properties();
-        outputProperties.setProperty(ConsumerConfigConstants.AWS_REGION, "us-east-1");
-        outputProperties.setProperty("AggregationEnabled", "false");
-
-        FlinkKinesisProducer<String> sinkFunction = new FlinkKinesisProducer<>(new SimpleStringSchema(), outputProperties);
-        sinkFunction.setDefaultStream("output-stream");
-        sinkFunction.setDefaultPartition("0");
 
         fullResultData.addSink(sinkFunction)
                 .name("Full Aggregate Output Sink")

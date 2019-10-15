@@ -7,6 +7,7 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<modules>
 		<module>message-sender</module>
+		<module>flink-job</module>
 	</modules>
 	<packaging>pom</packaging>
 

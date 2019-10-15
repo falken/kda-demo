@@ -2,11 +2,10 @@ package com.lightstreamsoftware.kda.demo;
 
 import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks;
 import org.apache.flink.streaming.api.watermark.Watermark;
-import org.joda.time.DateTime;
 
 import javax.annotation.Nullable;
 
-public class TimestampAndWatermarker implements AssignerWithPeriodicWatermarks<TickerData> {
+public class TimestampAndWatermarker implements AssignerWithPeriodicWatermarks<TurbineMetrics> {
 
     private long lastRecordProcessingTime;
 
@@ -17,7 +16,7 @@ public class TimestampAndWatermarker implements AssignerWithPeriodicWatermarks<T
     }
 
     @Override
-    public long extractTimestamp(TickerData element, long previousElementTimestamp) {
-        return lastRecordProcessingTime = DateTime.parse(element.getEventTime()).getMillis();
+    public long extractTimestamp(TurbineMetrics element, long previousElementTimestamp) {
+        return lastRecordProcessingTime = element.getMetricTimestamp();
     }
 }

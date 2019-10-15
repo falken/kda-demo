@@ -10,14 +10,10 @@ import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kinesis.FlinkKinesisConsumer;
 import org.apache.flink.streaming.connectors.kinesis.FlinkKinesisProducer;
 import org.apache.flink.streaming.connectors.kinesis.config.ConsumerConfigConstants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 
 public class StreamingJob {
-
-    private static final Logger logger = LoggerFactory.getLogger(StreamingJob.class);
 
     public static void main(String[] args) throws Exception {
         final ObjectMapper objectMapper = new ObjectMapper();

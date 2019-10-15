@@ -8,7 +8,8 @@
 	<modules>
 		<module>message-sender</module>
 		<module>flink-job</module>
-	</modules>
+        <module>message-receiver</module>
+    </modules>
 	<packaging>pom</packaging>
 
 	<name>KDA Demo</name>

@@ -3,16 +3,22 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>com.lightstreamsoftware.kda.demo</groupId>
 	<artifactId>flink-job</artifactId>
 	<version>1.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>Flink Quickstart Job</name>
+	<name>KDA Demo Processor</name>
+
+	<parent>
+		<groupId>com.lightstreamsoftware.kda.demo</groupId>
+		<artifactId>kda-demo</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<flink.version>1.6.2</flink.version>
+		<flink.version>1.9.0</flink.version>
 		<java.version>1.8</java.version>
 		<scala.binary.version>2.11</scala.binary.version>
 		<maven.compiler.source>${java.version}</maven.compiler.source>

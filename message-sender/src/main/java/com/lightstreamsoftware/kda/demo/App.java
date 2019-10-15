@@ -5,6 +5,7 @@ import com.amazonaws.services.kinesis.AmazonKinesis;
 import com.amazonaws.services.kinesis.AmazonKinesisClientBuilder;
 import com.amazonaws.services.kinesis.model.PutRecordsRequest;
 import com.amazonaws.services.kinesis.model.PutRecordsRequestEntry;
+import com.amazonaws.services.kinesis.model.PutRecordsResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.joda.time.DateTime;
@@ -66,7 +67,7 @@ public class App {
             PutRecordsRequest putRecordsRequest = new PutRecordsRequest()
                     .withRecords(metrics)
                     .withStreamName("input-stream");
-            kinesis.putRecords(putRecordsRequest);
+            PutRecordsResult putRecordsResult = kinesis.putRecords(putRecordsRequest);
             logger.info("Sent batch");
             try {
                 Thread.sleep(1000);

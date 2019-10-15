@@ -20,6 +20,7 @@ public class TurbineMetrics {
         this.rotorHeading = rotorHeading;
         this.powerOutput = powerOutput;
         this.errorCodes = errorCodes;
+        this.metricTimestamp = metricTimestamp;
     }
 
     public String getTurbineId() {

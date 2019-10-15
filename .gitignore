@@ -1,6 +1,5 @@
 target
 .idea
-flink-job.iml
-kda-demo.iml
-message-sender/messagesender.iml
+*.iml
 
+dependency-reduced-pom.xml

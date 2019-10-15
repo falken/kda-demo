@@ -6,9 +6,15 @@ import org.slf4j.LoggerFactory;
 
 public class TurbineSummaryAggregator implements AggregateFunction<TurbineMetrics, TurbineMetricsSummary,TurbineMetricsSummary> {
     private static final Logger logger = LoggerFactory.getLogger(TurbineSummaryAggregator.class);
+    private String metricType;
+
+    public TurbineSummaryAggregator(String metricType) {
+        this.metricType = metricType;
+    }
+
     @Override
     public TurbineMetricsSummary createAccumulator() {
-        return new TurbineMetricsSummary();
+        return new TurbineMetricsSummary(metricType);
     }
 
     @Override

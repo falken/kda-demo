@@ -5,7 +5,6 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMap
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kinesis.FlinkKinesisConsumer;
@@ -29,46 +28,48 @@ public class StreamingJob {
 
         Properties inputProperties = new Properties();
         inputProperties.setProperty(ConsumerConfigConstants.AWS_REGION, "us-east-1");
-        inputProperties.setProperty(ConsumerConfigConstants.STREAM_INITIAL_POSITION, ConsumerConfigConstants.InitialPosition.TRIM_HORIZON.toString());
-        inputProperties.setProperty(ConsumerConfigConstants.SHARD_GETRECORDS_INTERVAL_MILLIS, "1000");
-        inputProperties.setProperty(ConsumerConfigConstants.SHARD_GETRECORDS_MAX, "100");
+        inputProperties.setProperty(ConsumerConfigConstants.STREAM_INITIAL_POSITION, "TRIM_HORIZON");
+        inputProperties.setProperty(ConsumerConfigConstants.SHARD_GETRECORDS_INTERVAL_MILLIS, "500");
+        inputProperties.setProperty(ConsumerConfigConstants.SHARD_GETRECORDS_MAX, "1000");
 
-        FlinkKinesisConsumer<String> function = new FlinkKinesisConsumer<>("input-stream", new SimpleStringSchema(), inputProperties);
-        function.setPeriodicWatermarkAssigner(new AscendingTimestampExtractor<String>() {
-            @Override
-            public long extractAscendingTimestamp(String s) {
-                return 0;
-            }
-        });
-        DataStream<String> stream = env.addSource(function)
+        DataStream<String> stream = env.addSource(new FlinkKinesisConsumer<>("input-stream", new SimpleStringSchema(), inputProperties))
                 .name("Input Source")
                 .uid("5f20ef89-e50c-41d8-a75d-909e2b3b98e3")
                 .setParallelism(1)
                 .setMaxParallelism(1);
 
-        stream.printToErr();
-
-        DataStream<TurbineMetrics> tickerData = stream.map(stringBody -> {
-            logger.info("Got value: " + stringBody);
-            return objectMapper.readValue(stringBody, TurbineMetrics.class);
-        })
+        DataStream<TurbineMetrics> tickerData = stream.map(stringBody -> objectMapper.readValue(stringBody, TurbineMetrics.class))
                 .name("Parse Json")
                 .uid("6d73824f-8b1b-4022-b3ea-f0e406629462")
                 .setParallelism(1)
                 .setMaxParallelism(1)
                 .assignTimestampsAndWatermarks(new TimestampAndWatermarker());
 
+        DataStream<TurbineMetricsSummary> fullAggregations = tickerData
+                .windowAll(TumblingEventTimeWindows.of(Time.minutes(1)))
+                .aggregate(new TurbineSummaryAggregator("Totals"))
+                .name("Aggregate Full Data By 1 Minute")
+                .uid("7d528fd2-0d7a-4703-9d80-9bbb419fb78e")
+                .setParallelism(1)
+                .setMaxParallelism(1);
+
         DataStream<TurbineMetricsSummary> aggregatedTickerData = tickerData.keyBy(TurbineMetrics::getTurbineId)
                 .window(TumblingEventTimeWindows.of(Time.minutes(1)))
-                .aggregate(new TurbineSummaryAggregator())
+                .aggregate(new TurbineSummaryAggregator("Per Turbine"))
                 .name("Aggregate By 1 Minute")
-                .uid("7d528fd2-0d7a-4703-9d80-9bbb419fb78e")
+                .uid("5fafb567-53ed-4230-8f70-34d22424a4d3")
                 .setParallelism(1)
                 .setMaxParallelism(1);
 
         DataStream<String> resultData = aggregatedTickerData.map(objectMapper::writeValueAsString)
                 .name("Output As Json String")
                 .uid("5e6fcded-0323-4649-8f0d-6a111eec9499")
+                .setParallelism(1)
+                .setMaxParallelism(1);
+
+        DataStream<String> fullResultData = fullAggregations.map(objectMapper::writeValueAsString)
+                .name("Output Full Agg As Json String")
+                .uid("ed393f55-7b05-45ab-b492-296fecee202c")
                 .setParallelism(1)
                 .setMaxParallelism(1);
 
@@ -79,6 +80,8 @@ public class StreamingJob {
         FlinkKinesisProducer<String> sinkFunction = new FlinkKinesisProducer<>(new SimpleStringSchema(), outputProperties);
         sinkFunction.setDefaultStream("output-stream");
         sinkFunction.setDefaultPartition("0");
+
+        fullResultData.printToErr();
 
         resultData.print();
         resultData.addSink(sinkFunction)

@@ -81,9 +81,11 @@ public class StreamingJob {
         sinkFunction.setDefaultStream("output-stream");
         sinkFunction.setDefaultPartition("0");
 
-        fullResultData.printToErr();
+        fullResultData.addSink(sinkFunction)
+                .name("Full Aggregate Output Sink")
+                .uid("2856b77b-cdbf-4d37-8035-64a16511b5fb")
+                .setParallelism(1);
 
-        resultData.print();
         resultData.addSink(sinkFunction)
                 .name("Output Sink")
                 .uid("4fa1eca6-f13a-4751-887f-53f2aadecebf")

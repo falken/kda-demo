@@ -1,8 +1,15 @@
 package com.lightstreamsoftware.kda.demo;
 
 import org.apache.flink.api.common.functions.AggregateFunction;
+import org.joda.time.DateTime;
 
-public class TurbineSummaryAggregator implements AggregateFunction<TurbineMetrics, TurbineMetricsBatch, TurbineMetricsBatch> {
+public class TurbineSummaryAggregator implements AggregateFunction<TurbineMetrics, TurbineMetricsBatch, TurbineMetricsSummary> {
+
+    private String metricType;
+
+    public TurbineSummaryAggregator(String metricType) {
+        this.metricType = metricType;
+    }
 
     @Override
     public TurbineMetricsBatch createAccumulator() {
@@ -15,9 +22,14 @@ public class TurbineSummaryAggregator implements AggregateFunction<TurbineMetric
     }
 
     @Override
-    public TurbineMetricsBatch getResult(TurbineMetricsBatch acc) {
-
-        return acc;
+    public TurbineMetricsSummary getResult(TurbineMetricsBatch acc) {
+        TurbineMetricsSummary summary = new TurbineMetricsSummary();
+        summary.setKey(acc.getKey());
+        summary.setMetricType(metricType);
+        summary.setReadings(acc.getReadings());
+        summary.setTotalOutput(acc.getTotalOutput());
+        summary.setSummaryTimestamp(new DateTime(acc.getMinTimestamp()).plusMinutes(1).toString());
+        return summary;
     }
 
     @Override
